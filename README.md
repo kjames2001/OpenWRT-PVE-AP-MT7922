@@ -10,25 +10,43 @@ To remove the “You do not have a valid subscription for this server” popup m
 Creating the VM
 
 Open a web browser and navigate to the ProxMox web UI https://ProxMoxDNSorIP:8006/
+
 Click the Create VM button at the top right
+
 On the General tab, name the VM OpenWRT and set a VM ID (123 in this example) > click Next
+
 On the OS tab select Do not use any media and set the Guest OS Type to Linux and Version to 5.x - 2.6 Kernel > click Next
+
 On the System tab click Next
+
 On the Hard Disk tab set the Disk size to 0.001 > click Next
+
 On the CPU tab set the number of CPU cores and the Type to host > click Next
+
 On the Memory tab set the amount of memory to 256 MiB > click Next
+
 On the Network tab set the Model field to VirtIO (paravirtualized), Uncheck the Firewall box > click Next
+
 On the Confirm tab review the settings and click Finish
+
 Select the newly created OpenWRT VM from the left navigation panel
+
 Select Hardware from the left sub-navigation menu
+
 Click the Hard Disk to select it
+
 Click the Detach button at the top of the main content window to detach the hard disk from the VM
+
 Click the Unused disk to select it
+
 Click the Remove button at the top of the main content window to permanently delete it
+
 Click the Add button > Network Device
+
 Set the Model field to VirtIO (paravirtualized), Uncheck the Firewall box > Click Add
 
 Setting Up the OpenWRT Disk
+
 Select the Proxmox node name in the left navigation menu
 Click Shell in the left sub-navigation
 Run the following commands in the terminal
