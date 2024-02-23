@@ -117,6 +117,6 @@ Install wireless LAN card driver and firmware:
 
 after the reboot, you should be able to see wireless under network, if you can't, power circle the router (not soft reboot).
 
-now go to wireless, enable the wireless card edit it, change country in advanced tab. then set it to ap mode, set security and password and you are set.
+now go to wireless, enable the wireless card, edit it, change country in advanced tab. then set it to ap mode, set Essie name, set security and password and you are set.
 
 enjoy your private access point on openwrt as a vm on proxmox.
