@@ -109,7 +109,7 @@ Install wireless LAN card driver and firmware:
     
     wget https://github.com/openwrt/mt76/raw/master/firmware/WIFI_MT7922_patch_mcu_1_1_hdr.bin 
     
-    wget https://github.com/openwrt/mt76/raw/master /firmware/WIFI_RAM_CODE_MT7922_1.bin
+    wget https://github.com/openwrt/mt76/raw/master/firmware/WIFI_RAM_CODE_MT7922_1.bin
 
     opkg install wpad-openssl
     
