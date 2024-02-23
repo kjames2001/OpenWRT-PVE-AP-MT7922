@@ -55,6 +55,7 @@ Run the following commands in the terminal
     regex='<strong>Current Stable Release - OpenWrt ([^/]*)<\/strong>' && response=$(curl -s https://openwrt.org) && [[ $response =~ $regex ]] && stableVersion="${BASH_REMATCH[1]}"
 # download openwrt image
     wget -O openwrt.img.gz https://downloads.openwrt.org/releases/$stableVersion/targets/x86/64/openwrt-$stableVersion-x86-64-generic-ext4-combined.img.gz
+# just go to https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/ and get the link there, if this doesn't work.
 # extract the openwrt img
     gunzip ./openwrt.img.gz
 # rename the extracted img
