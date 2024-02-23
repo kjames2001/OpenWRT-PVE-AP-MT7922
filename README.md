@@ -103,7 +103,7 @@ now go and download putty or any ssh terminal and follow the steps bellow:
 
 Install wireless LAN card driver and firmware:
 
-    opkg 
+    opkg update
 
     opkg install kmod-iwlwifi iwlwifi-firmware-ax210
 
