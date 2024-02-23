@@ -89,10 +89,6 @@ Continue the configuration by running the following commands
     uci set network.lan.ipaddr='10.10.27.151'
 # restart network services
     service network restart
-# update openwrt packages
-    opkg update
-# install the luci web ui
-    opkg install luci
     
 Open a new browser tab and navigate to http://IPofVM, http://10.10.27.151 in the example
 At the login screen, enter the username root and the password set above > Click the Login button
