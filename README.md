@@ -34,6 +34,63 @@ If you can use your infrastructure to ensure IPs do not change, that’s great. 
 
 replace proxmox.home.lkiesow.io with your domain name and proxmox with your host name.
 
+Alternatively, use this dhclient exit hook scrip if you use fqdm: 
+
+    #!/bin/sh
+    # dhclient change hostname script for Ubuntu
+    # /etc/dhcp/dhclient-exit-hooks.d/sethostname
+    # logs in /var/log/upstart/network-interface-eth0.log
+
+    set -x
+    export
+
+    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ] || [ "$reason" = "REBIND" ] || [ "$reason" = "REBOOT" ]; then
+        echo new_ip_address=$new_ip_address
+        echo new_host_name=$new_host_name
+        echo new_domain_name=$new_domain_name
+    
+        new_fqdn="$new_host_name.$new_domain_name"
+        echo new_fqdn=$new_fqdn
+
+        old_fqdn=$(hostname -f)
+        echo old_fqdn=$old_fqdn
+    
+        if [ ! -z "$new_host_name" ] && [ "$old_fqdn" != "$new_fqdn" ]; then
+            # Rename Host
+            hostnamectl set-hostname $new_host_name
+
+            # Update /etc/hosts if needed
+            TMPHOSTS=/etc/hosts.dhcp.new
+            if ! grep "$new_ip_address $new_fqdn $new_host_name" /etc/hosts; then
+                # Remove the 127.0.1.1 put there by the debian installer
+                grep -vF '127.0.1.1 ' < /etc/hosts > $TMPHOSTS
+                mv $TMPHOSTS /etc/hosts
+            
+                # Remove old entries
+                grep -vF "$new_ip_address " < /etc/hosts > $TMPHOSTS
+                mv $TMPHOSTS /etc/hosts
+                grep -vF " $new_host_name" < /etc/hosts > $TMPHOSTS
+                mv $TMPHOSTS /etc/hosts
+                if [ ! -z "$old_fqdn" ]; then
+                    grep -vF " $old_fqdn" < /etc/hosts > $TMPHOSTS
+                    mv $TMPHOSTS /etc/hosts
+                fi
+            
+                # Add the our new ip address and name
+                echo "$new_ip_address $new_fqdn $new_host_name" >> /etc/hosts
+            fi
+
+            # Recreate puppet certs
+            rm -rf /var/lib/puppet/ssl
+            service puppet restart
+
+            # Restart avahi daemon
+            service avahi-daemon restart
+        fi
+    fi
+
+    set +x
+
 # Remove proxmox nag
 
 To remove the “You do not have a valid subscription for this server” popup message while logging in, run the command bellow:
