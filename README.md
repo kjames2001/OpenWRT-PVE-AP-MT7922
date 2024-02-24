@@ -7,19 +7,19 @@ Network Configuration
 
 To enable DHCP, on your server, edit /etc/network/interfaces. You should see a configuration like this (interface names may varry):
 
-iface vmbr0 inet static
-        address 192.168.1.157/24
-        gateway 192.168.1.1
-        bridge-ports enp5s0
-        bridge-stp off
-        bridge-fd 0
+                iface vmbr0 inet static
+                        address 192.168.1.157/24
+                        gateway 192.168.1.1
+                        bridge-ports enp5s0
+                        bridge-stp off
+                        bridge-fd 0
 
 Modify this block and turn it into a DHCP configuration:
 
-iface vmbr0 inet dhcp
-        bridge-ports enp5s0
-        bridge-stp off
-        bridge-fd 0
+                iface vmbr0 inet dhcp
+                        bridge-ports enp5s0
+                        bridge-stp off
+                        bridge-fd 0
 
 Dynamic Host Configuration
 
