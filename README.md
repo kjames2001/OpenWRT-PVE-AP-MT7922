@@ -68,23 +68,23 @@ Run the following commands in the terminal
     qm importdisk 100 openwrt.raw local-lvm
   NB: you can update openwrt image the same way in the future, just remember to backup before hand.
 
-Once the disk import completes, select the OpenWRT VM from the left navigation menu > Hardware
-Double click the Unused Disk > Click the Add button
-Select Options from the left sub-navigation menu
-Double click Boot Order
-Check the Enabled box next to the hard disk
-Drag the Hard disk up in the boot order as needed, typically below the CD-ROM device
-Click OK
-Double click Use tablet pointer > Uncheck the Enabled box > Click OK
-Click the Start button in the top right of the screen
-Click the Console link to watch the boot process
-Wait for the text to stop scrolling and press Enter
-Run the following command to change/set the root password
+#Once the disk import completes, select the OpenWRT VM from the left navigation menu > Hardware
+#Double click the Unused Disk > Click the Add button
+#Select Options from the left sub-navigation menu
+#Double click Boot Order
+#Check the Enabled box next to the hard disk
+#Drag the Hard disk up in the boot order as needed, typically below the CD-ROM device
+#Click OK
+#Double click Use tablet pointer > Uncheck the Enabled box > Click OK
+#Click the Start button in the top right of the screen
+#Click the Console link to watch the boot process
+#Wait for the text to stop scrolling and press Enter
+#Run the following command to change/set the root password
 
     passwd
     
-Type a new root password twice to set it
-Continue the configuration by running the following commands
+#Type a new root password twice to set it
+#Continue the configuration by running the following commands
 
 # set the lan ip address, use something in the same subnet as your LAN
     uci set network.lan.ipaddr='10.10.27.151'
