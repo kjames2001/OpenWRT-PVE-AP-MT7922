@@ -133,4 +133,16 @@ after the reboot, you should be able to see wireless under network, if you can't
 
 now go to wireless, enable the wireless card, edit it, change country in advanced tab. then set it to ap mode, set Essie name, set security and password and you are set.
 
+To prevent a dead ap on startup (sometimes ap won't turn on on startup), add these lines to System > Startup > Local start:
+
+        uci set wireless.radio0.disabled='1' 
+        uci set wireless.default_radio0.disabled='1' 
+        uci commit wireless
+        wifi reload
+        sleep 5
+        uci set wireless.radio0.disabled='0' 
+        uci set wireless.default_radio0.disabled='0' 
+        uci commit wireless
+        wifi reload
+
 enjoy your private access point on openwrt as a vm on proxmox.
