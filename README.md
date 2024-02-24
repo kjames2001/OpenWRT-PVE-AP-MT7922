@@ -133,7 +133,7 @@ after the reboot, you should be able to see wireless under network, if you can't
 
 now go to wireless, enable the wireless card, edit it, change country in advanced tab. then set it to ap mode, set Essie name, set security and password and you are set.
 
-To prevent a dead ap on startup (sometimes ap won't turn on on startup), add these lines to System > Startup > Local start:
+To prevent a dead ap on startup (sometimes ap won't turn on on startup), add these lines to System > Startup > Local startup:
 
         uci set wireless.radio0.disabled='1' 
         uci set wireless.default_radio0.disabled='1' 
