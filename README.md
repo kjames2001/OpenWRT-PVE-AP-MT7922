@@ -7,19 +7,19 @@ Network Configuration
 
 To enable DHCP, on your server, edit /etc/network/interfaces. You should see a configuration like this (interface names may varry):
 
-                iface vmbr0 inet static
-                        address 192.168.1.157/24
-                        gateway 192.168.1.1
-                        bridge-ports enp5s0
-                        bridge-stp off
-                        bridge-fd 0
+    iface vmbr0 inet static
+            address 192.168.1.157/24
+            gateway 192.168.1.1
+            bridge-ports enp5s0
+            bridge-stp off
+            bridge-fd 0
 
 Modify this block and turn it into a DHCP configuration:
 
-                iface vmbr0 inet dhcp
-                        bridge-ports enp5s0
-                        bridge-stp off
-                        bridge-fd 0
+    iface vmbr0 inet dhcp
+            bridge-ports enp5s0
+            bridge-stp off
+            bridge-fd 0
 
 Dynamic Host Configuration
 
@@ -27,10 +27,10 @@ On a Proxmox server, when updating the IP address, /etc/hosts must be updated as
 
 If you can use your infrastructure to ensure IPs do not change, that’s great. If not, you can use dhcpclient hooks to automatically update this file. To do that, create a new file /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts with content like this:
 
-        if ([ $reason = "BOUND" ] || [ $reason = "RENEW" ])
-        then
-          sed -i "s/^.*\sproxmox.home.lkiesow.io\s.*$/${new_ip_address} proxmox.home.lkiesow.io proxmox/" /etc/hosts
-        fi
+    if ([ $reason = "BOUND" ] || [ $reason = "RENEW" ])
+    then
+      sed -i "s/^.*\sproxmox.home.lkiesow.io\s.*$/${new_ip_address} proxmox.home.lkiesow.io proxmox/" /etc/hosts
+    fi
 
 replace proxmox.home.lkiesow.io with your domain name and proxmox with your host name.
 
