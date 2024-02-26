@@ -98,7 +98,7 @@ To remove the “You do not have a valid subscription for this server” popup m
     sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js && systemctl restart pveproxy.service
 
 
-Creating the VM
+# Creating the VM
 
 Open a web browser and navigate to the ProxMox web UI https://ProxMoxDNSorIP:8006/
 
@@ -136,28 +136,36 @@ Click the Add button > Network Device
 
 Set the Model field to VirtIO (paravirtualized), Uncheck the Firewall box > Click Add
 
-Setting Up the OpenWRT Disk
+# Setting Up the OpenWRT Disk
 
 Select the Proxmox node name in the left navigation menu
 Click Shell in the left sub-navigation
 Run the following commands in the terminal
 
-# lookup the latest stable version number
+lookup the latest stable version number
+
     regex='<strong>Current Stable Release - OpenWrt ([^/]*)<\/strong>' && response=$(curl -s https://openwrt.org) && [[ $response =~ $regex ]] && stableVersion="${BASH_REMATCH[1]}"
-# download openwrt image
+download openwrt image
+
     wget -O openwrt.img.gz https://downloads.openwrt.org/releases/$stableVersion/targets/x86/64/openwrt-$stableVersion-x86-64-generic-ext4-combined.img.gz
-# just go to https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/ and get the link there, if this doesn't work.
-# extract the openwrt img
+just go to https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/ and get the link there, if this doesn't work.
+extract the openwrt img
+
     gunzip ./openwrt.img.gz
-# rename the extracted img
+rename the extracted img
+
     mv ./openwrt*.img ./openwrt.raw
-# increase the raw disk to 512 MB
+increase the raw disk to 512 MB
+
     qemu-img resize -f raw ./openwrt.raw 512M
-# import the disk to the openwrt vm
-# update the vm id and storage device as needed
-# usage: qm importdisk
+import the disk to the openwrt vm
+update the vm id and storage device as needed
+usage: qm importdisk
+
     qm importdisk 100 openwrt.raw local-lvm
   NB: you can update openwrt image the same way in the future, just remember to backup before hand.
+
+# modify vm
 
 Once the disk import completes, select the OpenWRT VM from the left navigation menu > Hardware
 
@@ -189,9 +197,11 @@ Type a new root password twice to set it
 
 Continue the configuration by running the following commands
 
-# set the lan ip address, use something in the same subnet as your LAN
+set the lan ip address, use something in the same subnet as your LAN
+
     uci set network.lan.ipaddr='10.10.27.151'
-# restart network services
+restart network services
+
     service network restart
     
 Open a new browser tab and navigate to http://IPofVM, http://10.10.27.151 in the example
@@ -202,7 +212,7 @@ once logged in, go to Network > Interfaces, then edit the lab inter face and set
 
 now go and download putty or any ssh terminal and follow the steps bellow:
 
-Install wireless LAN card driver and firmware:
+# Install wireless LAN card driver and firmware:
 
     opkg update
 
@@ -223,6 +233,8 @@ Install wireless LAN card driver and firmware:
 after the reboot, you should be able to see wireless under network, if you can't, power circle the router (not soft reboot).
 
 now go to wireless, enable the wireless card, edit it, change country in advanced tab. then set it to ap mode, set Essie name, set security and password and you are set.
+
+# Auto restart the ap at boot:
 
 To prevent a dead ap on startup (sometimes ap won't turn on on startup), add these lines to System > Startup > Local startup:
 
