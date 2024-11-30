@@ -34,7 +34,7 @@ If you can use your infrastructure to ensure IPs do not change, that’s great. 
 
 replace proxmox.home.lkiesow.io with your domain name and proxmox with your host name.
 
-Alternatively, use this dhclient exit hook scrip if you use fqdm: 
+Alternatively, use this dhclient exit hook scrip if you use fqdn: 
 
     #!/bin/sh
     # dhclient change hostname script for Ubuntu
@@ -90,6 +90,25 @@ Alternatively, use this dhclient exit hook scrip if you use fqdm:
     fi
 
     set +x
+
+I set up a cron job to run this script to check for internet access, and renew dhcp lease from openwrt vm if unsuccessful:
+
+
+    #!/bin/bash
+
+    cp /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
+
+    postfix reload
+
+    # Ping Microsoft
+    ping -c 1 100.117.138.45 > /dev/null
+    # Check the exit status of the ping command
+    if [ $? -ne 0 ]; then
+        echo "Ping failed, renewing DHCP lease..."
+       # /usr/sbin/dhclient -v -r # Release current DHCP lease dhclient -v # Reques>
+        /usr/sbin/dhclient vmbr0
+    fi
+
 
 # Remove proxmox nag
 
