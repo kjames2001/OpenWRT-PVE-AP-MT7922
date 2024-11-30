@@ -105,7 +105,8 @@ I set up a cron job to run this script to check for internet access, and renew d
     # Check the exit status of the ping command
     if [ $? -ne 0 ]; then
         echo "Ping failed, renewing DHCP lease..."
-       # /usr/sbin/dhclient -v -r # Release current DHCP lease dhclient -v # Reques>
+       # /usr/sbin/dhclient -v -r # Release current DHCP lease # dhclient -v 
+       # Request a new dhcp lease from vmbro, where openwrt is connected.
         /usr/sbin/dhclient vmbr0
     fi
 
