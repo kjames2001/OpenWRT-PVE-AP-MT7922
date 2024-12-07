@@ -269,3 +269,33 @@ To prevent a dead ap on startup (sometimes ap won't turn on on startup), add the
         wifi reload
 
 enjoy your private access point on openwrt as a vm on proxmox.
+
+
+#OpenWrt persistent repartitioning
+
+OpenWrt has been originally developed for resource-constrained platforms. Consequently, even on x86, it doesn't have a traditional installer. Rather than install software, you copy an image onto the boot drive. That image is fairly small (about 120 MB in recent versions), so out of the box, OpenWrt has about 120 MB of total storage space regardless of the actual size of the storage device. That space can be reclaimed by repartitioning the boot drive, but that repartitioning goes the way of the dodo every time OpenWrt is upgraded.
+
+To overcome this, we can make repartitioning persist through a minor version upgrade (current configuration will persist as well).
+
+First, we install Attended Sysupgrade and utilities for repartitioning:
+
+    opkg update && opkg install auc luci-app-attendedsysupgrade parted losetup resize2fs
+
+Next, we install the repartitioning script:
+
+    cd /root
+    wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/advanced/expand_root?codeblock=0"
+    . ./expand-root.sh
+
+Now we can run the repartitioning script we just installed to expand the root partition and root file system to fill the available disk space:
+
+    sh /etc/uci-defaults/70-rootpt-resize
+
+The device will reboot, most likely, twice. After that, the root partition and the root file system will be expanded to fill all space available to OpenWrt.
+
+#OpenWrt sysupgrade
+
+After all this, there are two ways to upgrade. We can type auc on the command line to run the command-line version of Attended Sysupgrade, or we can go to the management interface (System >> Attended Sysupgrade) and follow the prompts. All changes we made to our system will be preserved through the upgrade and partitioning will be maintained. The traditional sysupgrade should work just as well, except, of course, the configuration may be reset to the standard defaults.
+
+Note that under this setup, completing the sysupgrade will require three reboots (all will be done automatically), so give your device some time to finish what it's doing.
+
