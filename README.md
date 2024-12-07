@@ -271,7 +271,7 @@ To prevent a dead ap on startup (sometimes ap won't turn on on startup), add the
 enjoy your private access point on openwrt as a vm on proxmox.
 
 
-#OpenWrt persistent repartitioning
+# OpenWrt persistent repartitioning
 
 OpenWrt has been originally developed for resource-constrained platforms. Consequently, even on x86, it doesn't have a traditional installer. Rather than install software, you copy an image onto the boot drive. That image is fairly small (about 120 MB in recent versions), so out of the box, OpenWrt has about 120 MB of total storage space regardless of the actual size of the storage device. That space can be reclaimed by repartitioning the boot drive, but that repartitioning goes the way of the dodo every time OpenWrt is upgraded.
 
@@ -293,7 +293,7 @@ Now we can run the repartitioning script we just installed to expand the root pa
 
 The device will reboot, most likely, twice. After that, the root partition and the root file system will be expanded to fill all space available to OpenWrt.
 
-#OpenWrt sysupgrade
+# OpenWrt sysupgrade
 
 After all this, there are two ways to upgrade. We can type auc on the command line to run the command-line version of Attended Sysupgrade, or we can go to the management interface (System >> Attended Sysupgrade) and follow the prompts. All changes we made to our system will be preserved through the upgrade and partitioning will be maintained. The traditional sysupgrade should work just as well, except, of course, the configuration may be reset to the standard defaults.
 
