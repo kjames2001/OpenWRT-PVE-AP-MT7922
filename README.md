@@ -91,7 +91,7 @@ Alternatively, use this dhclient exit hook scrip if you use fqdn:
 
     set +x
 
-I set up a cron job to run this script to check for internet access, and renew dhcp lease from openwrt vm if unsuccessful:
+I set up a cron job to run this script to check for internet access, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
 
     #!/bin/bash
