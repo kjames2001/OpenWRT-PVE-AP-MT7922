@@ -91,7 +91,7 @@ Alternatively, use this dhclient exit hook scrip if you use fqdn:
 
     set +x
 
-I set up a cron job to run this script to check for internet access, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
+I set up a cron job to run this script to check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
 
     #!/bin/bash
@@ -105,9 +105,15 @@ I set up a cron job to run this script to check for internet access, and renew d
     # Check the exit status of the ping command
     if [ $? -ne 0 ]; then
         echo "Ping failed, renewing DHCP lease..."
-       # /usr/sbin/dhclient -v -r # Release current DHCP lease # dhclient -v 
-       # Request a new dhcp lease from vmbro, where openwrt is connected.
+        # /usr/sbin/dhclient -v -r # Release current DHCP lease # dhclient -v 
+        # Request a new dhcp lease from vmbro, where openwrt is connected.
         /usr/sbin/dhclient vmbr0
+        # wait 5 seconds for dhcp lease renew
+        sleep 5
+        # delete old gateway
+        ip route del default via 192.168.1.1
+        # add new gateway
+        ip route add default via 10.8.6.1
     fi
 
 
