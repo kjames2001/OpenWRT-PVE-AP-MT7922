@@ -1,9 +1,9 @@
 # OpenWRT-PVE-AP-MT7922
 A guide to run OpenWRT on PVE with Access Point through m.2 wifi module MT7922
 
-# Proxmox dhcp setup:
+## Proxmox dhcp setup:
 
-## Network Configuration
+### Network Configuration
 
 To enable DHCP, on your server, edit /etc/network/interfaces. You should see a configuration like this (interface names may varry):
 ```
@@ -22,7 +22,7 @@ iface vmbr0 inet dhcp
         bridge-fd 0
 ```
 Modify the bridge-ports accordingly
-## Dynamic Host Configuration
+### Dynamic Host Configuration
 
 1. Create the hook file
 
@@ -60,7 +60,7 @@ Modify the HOSTNAME and FQDN values as desired.
 chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 ```
 
-# To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
+## To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
 1. Script → /usr/local/bin/dhcp-renew.sh
 ```
@@ -201,14 +201,14 @@ Logs:
 journalctl -t dhcp-renew -f
 ```
 
-# Remove proxmox nag
+## Remove proxmox nag
 
 To remove the “You do not have a valid subscription for this server” popup message while logging in, run the command bellow:
 
     sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js && systemctl restart pveproxy.service
 
-
-# Creating the VM
+## Setting up Openwrt as a VM
+### Creating the Openwrt VM
 
 Open a web browser and navigate to the ProxMox web UI https://ProxMoxDNSorIP:8006/
 
@@ -246,7 +246,7 @@ Click the Add button > Network Device
 
 Set the Model field to VirtIO (paravirtualized), Uncheck the Firewall box > Click Add
 
-# Setting Up the OpenWRT Disk
+### Setting Up the OpenWRT Disk
 
 Select the Proxmox node name in the left navigation menu
 Click Shell in the left sub-navigation
@@ -275,7 +275,7 @@ usage: qm importdisk
     qm importdisk 100 openwrt.raw local-lvm
   NB: you can update openwrt image the same way in the future, just remember to backup before hand.
 
-# modify vm
+### modify vm
 
 Once the disk import completes, select the OpenWRT VM from the left navigation menu > Hardware
 
@@ -322,7 +322,7 @@ once logged in, go to Network > Interfaces, then edit the lab inter face and set
 
 now go and download putty or any ssh terminal and follow the steps bellow:
 
-# Install wireless LAN card driver and firmware:
+### Install wireless LAN card driver and firmware:
 
     opkg update
 
@@ -344,7 +344,7 @@ after the reboot, you should be able to see wireless under network, if you can't
 
 now go to wireless, enable the wireless card, edit it, change country in advanced tab. then set it to ap mode, set Essie name, set security and password and you are set.
 
-# Auto restart the ap at boot:
+### Auto restart the ap at boot:
 
 To prevent a dead ap on startup (sometimes ap won't turn on on startup), add these lines to System > Startup > Local startup:
 
@@ -361,7 +361,7 @@ To prevent a dead ap on startup (sometimes ap won't turn on on startup), add the
 enjoy your private access point on openwrt as a vm on proxmox.
 
 
-# OpenWrt persistent repartitioning
+### OpenWrt persistent repartitioning
 
 OpenWrt has been originally developed for resource-constrained platforms. Consequently, even on x86, it doesn't have a traditional installer. Rather than install software, you copy an image onto the boot drive. That image is fairly small (about 120 MB in recent versions), so out of the box, OpenWrt has about 120 MB of total storage space regardless of the actual size of the storage device. That space can be reclaimed by repartitioning the boot drive, but that repartitioning goes the way of the dodo every time OpenWrt is upgraded.
 
@@ -383,7 +383,7 @@ Now we can run the repartitioning script we just installed to expand the root pa
 
 The device will reboot, most likely, twice. After that, the root partition and the root file system will be expanded to fill all space available to OpenWrt.
 
-# OpenWrt sysupgrade
+### OpenWrt sysupgrade
 
 After all this, there are two ways to upgrade. We can type auc on the command line to run the command-line version of Attended Sysupgrade, or we can go to the management interface (System >> Attended Sysupgrade) and follow the prompts. All changes we made to our system will be preserved through the upgrade and partitioning will be maintained. The traditional sysupgrade should work just as well, except, of course, the configuration may be reset to the standard defaults.
 
