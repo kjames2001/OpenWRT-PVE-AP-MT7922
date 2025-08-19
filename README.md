@@ -6,39 +6,39 @@ A guide to run OpenWRT on PVE with Access Point through m.2 wifi module MT7922
 Network Configuration
 
 To enable DHCP, on your server, edit /etc/network/interfaces. You should see a configuration like this (interface names may varry):
-
-    iface vmbr0 inet static
-            address 192.168.1.157/24
-            gateway 192.168.1.1
-            bridge-ports enp5s0
-            bridge-stp off
-            bridge-fd 0
-
+```
+iface vmbr0 inet static
+        address 192.168.1.157/24
+        gateway 192.168.1.1
+        bridge-ports enp5s0
+        bridge-stp off
+        bridge-fd 0
+```
 Modify this block and turn it into a DHCP configuration:
-
-    iface vmbr0 inet dhcp
-            bridge-ports enp5s0
-            bridge-stp off
-            bridge-fd 0
-
+```
+iface vmbr0 inet dhcp
+        bridge-ports enp5s0
+        bridge-stp off
+        bridge-fd 0
+```
 Dynamic Host Configuration
 
-1️⃣ Create the hook file
+1. Create the hook file
 
 Path: /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
+```
+#!/bin/sh
+#
+# dhclient exit hook to update /etc/hosts when IP changes
+#
 
-    #!/bin/sh
-    #
-    # dhclient exit hook to update /etc/hosts when IP changes
-    #
+# Replace these with your actual hostname and domain
+HOSTNAME="pve-portable"
+FQDN="pve-portable.lan"
+HOST_ENTRY="${new_ip_address} ${FQDN} ${HOSTNAME}"
 
-    # Replace these with your actual hostname and domain
-    HOSTNAME="proxmox"
-    FQDN="proxmox.home.lkiesow.io"
-    HOST_ENTRY="${new_ip_address} ${FQDN} ${HOSTNAME}"
-
-    # Only run when DHCP lease is bound or renewed
-    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ]; then
+# Only run when DHCP lease is bound or renewed
+if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ]; then
 
     # Check if the hostname already exists in /etc/hosts
     if grep -q "$FQDN" /etc/hosts; then
@@ -50,12 +50,14 @@ Path: /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
     fi
 
     logger -t dhclient-hosts "Updated /etc/hosts: $HOST_ENTRY"
-    fi
+fi
+```
+Modify the HOSTNAME and FQDN values as desired.
     
-2️⃣ Make it executable
-
-    chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
-
+2. Make it executable
+```
+chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
+```
 
 # To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
@@ -74,7 +76,7 @@ DELAY=5
 PING_TARGETS=("1.1.1.1" "8.8.8.8" "9.9.9.9")   # Cloudflare, Google, Quad9
 OPENWRT_VM=101
 ADGUARD_LXC=102
-BOOT_WINDOW=300   # seconds since boot considered "startup"
+BOOT_WINDOW=60   # seconds since boot considered "startup"
 
 log() {
     logger -t dhcp-renew "$1"
@@ -150,9 +152,9 @@ exit 0
 ```
 
 Make it executable:
-
-    chmod +x /usr/local/bin/dhcp-renew.sh
-
+```
+chmod +x /usr/local/bin/dhcp-renew.sh
+```
 2. Systemd Service → /etc/systemd/system/dhcp-renew.service
 
 ```
@@ -182,7 +184,7 @@ RandomizedDelaySec=30
 [Install]
 WantedBy=timers.target
 ```
-
+adjust OnBootSec to desired value (eg. 30s)
 4. Enable & Start
 ```
 systemctl daemon-reload
