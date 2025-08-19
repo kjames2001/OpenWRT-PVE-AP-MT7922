@@ -3,7 +3,7 @@ A guide to run OpenWRT on PVE with Access Point through m.2 wifi module MT7922
 
 # Proxmox dhcp setup:
 
-Network Configuration
+## Network Configuration
 
 To enable DHCP, on your server, edit /etc/network/interfaces. You should see a configuration like this (interface names may varry):
 ```
@@ -21,7 +21,8 @@ iface vmbr0 inet dhcp
         bridge-stp off
         bridge-fd 0
 ```
-Dynamic Host Configuration
+Modify the bridge-ports accordingly
+## Dynamic Host Configuration
 
 1. Create the hook file
 
