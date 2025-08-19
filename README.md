@@ -57,10 +57,10 @@ Path: /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
     chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 
 
-To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
+# To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
 1. Script → /usr/local/bin/dhcp-renew.sh
-
+```
     #!/bin/bash
     #
     # dhcp-renew.sh – Ensure Proxmox host has valid DHCP/DNS.
@@ -146,8 +146,56 @@ To check for internet access @reboot, and renew dhcp lease from openwrt vm if no
     fi
     
     exit 0
+```
 
+Make it executable:
 
+    chmod +x /usr/local/bin/dhcp-renew.sh
+
+2. Systemd Service → /etc/systemd/system/dhcp-renew.service
+
+```
+[Unit]
+Description=Renew DHCP lease on Proxmox host (vmbr0)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dhcp-renew.sh
+```
+
+3. Systemd Timer → /etc/systemd/system/dhcp-renew.timer
+```
+[Unit]
+Description=Periodic DHCP renew check for Proxmox host (vmbr0)
+
+[Timer]
+# Run 2 minutes after boot
+OnBootSec=2min
+# Then repeat every 5 minutes
+OnUnitActiveSec=5min
+# Add a bit of jitter to avoid collisions if multiple timers
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
+```
+
+4. Enable & Start
+```
+systemctl daemon-reload
+systemctl enable dhcp-renew.timer
+systemctl start dhcp-renew.timer
+```
+Check timers:
+```
+systemctl list-timers | grep dhcp-renew
+```
+Logs:
+```
+journalctl -t dhcp-renew -f
+```
 
 # Remove proxmox nag
 
