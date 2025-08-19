@@ -23,98 +23,130 @@ Modify this block and turn it into a DHCP configuration:
 
 Dynamic Host Configuration
 
-On a Proxmox server, when updating the IP address, /etc/hosts must be updated as well. That is why just enabling DHCP can cause problems.
+1️⃣ Create the hook file
 
-If you can use your infrastructure to ensure IPs do not change, that’s great. If not, you can use dhcpclient hooks to automatically update this file. To do that, create a new file /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts with content like this:
-
-    if ([ $reason = "BOUND" ] || [ $reason = "RENEW" ])
-    then
-      sed -i "s/^.*\sproxmox.home.lkiesow.io\s.*$/${new_ip_address} proxmox.home.lkiesow.io proxmox/" /etc/hosts
-    fi
-
-replace proxmox.home.lkiesow.io with your domain name and proxmox with your host name.
-
-Alternatively, use this dhclient exit hook scrip if you use fqdn: 
+Path: /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 
     #!/bin/sh
-    # dhclient change hostname script for Ubuntu
-    # /etc/dhcp/dhclient-exit-hooks.d/sethostname
-    # logs in /var/log/upstart/network-interface-eth0.log
+    #
+    # dhclient exit hook to update /etc/hosts when IP changes
+    #
 
-    set -x
-    export
+    # Replace these with your actual hostname and domain
+    HOSTNAME="proxmox"
+    FQDN="proxmox.home.lkiesow.io"
+    HOST_ENTRY="${new_ip_address} ${FQDN} ${HOSTNAME}"
 
-    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ] || [ "$reason" = "REBIND" ] || [ "$reason" = "REBOOT" ]; then
-        echo new_ip_address=$new_ip_address
-        echo new_host_name=$new_host_name
-        echo new_domain_name=$new_domain_name
+    # Only run when DHCP lease is bound or renewed
+    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ]; then
+
+    # Check if the hostname already exists in /etc/hosts
+    if grep -q "$FQDN" /etc/hosts; then
+        # Replace the existing line with the new IP
+        sed -i "s/^.*[[:space:]]$FQDN[[:space:]].*$/ $HOST_ENTRY/" /etc/hosts
+    else
+        # Append the new entry if it doesn't exist
+        echo "$HOST_ENTRY" >> /etc/hosts
+    fi
+
+    logger -t dhclient-hosts "Updated /etc/hosts: $HOST_ENTRY"
+    fi
     
-        new_fqdn="$new_host_name.$new_domain_name"
-        echo new_fqdn=$new_fqdn
+2️⃣ Make it executable
 
-        old_fqdn=$(hostname -f)
-        echo old_fqdn=$old_fqdn
-    
-        if [ ! -z "$new_host_name" ] && [ "$old_fqdn" != "$new_fqdn" ]; then
-            # Rename Host
-            hostnamectl set-hostname $new_host_name
+    chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 
-            # Update /etc/hosts if needed
-            TMPHOSTS=/etc/hosts.dhcp.new
-            if ! grep "$new_ip_address $new_fqdn $new_host_name" /etc/hosts; then
-                # Remove the 127.0.1.1 put there by the debian installer
-                grep -vF '127.0.1.1 ' < /etc/hosts > $TMPHOSTS
-                mv $TMPHOSTS /etc/hosts
-            
-                # Remove old entries
-                grep -vF "$new_ip_address " < /etc/hosts > $TMPHOSTS
-                mv $TMPHOSTS /etc/hosts
-                grep -vF " $new_host_name" < /etc/hosts > $TMPHOSTS
-                mv $TMPHOSTS /etc/hosts
-                if [ ! -z "$old_fqdn" ]; then
-                    grep -vF " $old_fqdn" < /etc/hosts > $TMPHOSTS
-                    mv $TMPHOSTS /etc/hosts
-                fi
-            
-                # Add the our new ip address and name
-                echo "$new_ip_address $new_fqdn $new_host_name" >> /etc/hosts
-            fi
 
-            # Recreate puppet certs
-            rm -rf /var/lib/puppet/ssl
-            service puppet restart
+To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
-            # Restart avahi daemon
-            service avahi-daemon restart
+1. Script → /usr/local/bin/dhcp-renew.sh
+
+#!/bin/bash
+#
+# dhcp-renew.sh – Ensure Proxmox host has valid DHCP/DNS.
+# On boot only: start OpenWRT + AdGuard if no IP is assigned.
+#
+
+IFACE="vmbr0"
+FALLBACK_DNS="100.100.100.100"
+RETRIES=3
+DELAY=5
+PING_TARGETS=("1.1.1.1" "8.8.8.8" "9.9.9.9")   # Cloudflare, Google, Quad9
+OPENWRT_VM=101
+ADGUARD_LXC=102
+BOOT_WINDOW=300   # seconds since boot considered "startup"
+
+log() {
+    logger -t dhcp-renew "$1"
+    echo "$1"
+}
+
+check_ip() {
+    ip addr show "$IFACE" | grep -q "inet "
+}
+
+check_connectivity() {
+    for target in "${PING_TARGETS[@]}"; do
+        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+            log "Connectivity OK via $target"
+            return 0
+        fi
+    done
+    return 1
+}
+
+renew_dhcp() {
+    for attempt in $(seq 1 "$RETRIES"); do
+        log "Attempt $attempt: renewing DHCP lease on $IFACE..."
+        /usr/sbin/dhclient -v -r "$IFACE" >/dev/null 2>&1
+        /usr/sbin/dhclient -v "$IFACE" >/dev/null 2>&1
+
+        sleep 2
+        if check_ip && check_connectivity; then
+            log "DHCP renew successful on $IFACE"
+            return 0
+        fi
+        log "DHCP renew failed on attempt $attempt, retrying in $DELAY seconds..."
+        sleep "$DELAY"
+    done
+    return 1
+}
+
+start_infra() {
+    log "No IP assigned after retries. Starting OpenWRT VM ($OPENWRT_VM) and AdGuard LXC ($ADGUARD_LXC)..."
+    /usr/sbin/qm start "$OPENWRT_VM"
+    /usr/sbin/pct start "$ADGUARD_LXC"
+}
+
+# --- Main logic ---
+
+if check_ip && check_connectivity; then
+    log "IP and connectivity are working on $IFACE, nothing to do."
+    exit 0
+fi
+
+log "No working IP/connectivity, attempting DHCP renewal..."
+if ! renew_dhcp; then
+    # Only on boot → start infra
+    uptime_seconds=$(awk '{print int($1)}' /proc/uptime)
+    if [ "$uptime_seconds" -lt "$BOOT_WINDOW" ] && ! check_ip; then
+        start_infra
+    fi
+
+    # Add fallback DNS if still no connectivity
+    if ! check_connectivity; then
+        log "Adding fallback DNS $FALLBACK_DNS"
+        if ! grep -qxF "nameserver $FALLBACK_DNS" /etc/resolv.conf; then
+            echo "nameserver $FALLBACK_DNS" >> /etc/resolv.conf
+            log "Added fallback DNS server $FALLBACK_DNS to /etc/resolv.conf"
+        else
+            log "Fallback DNS $FALLBACK_DNS already present."
         fi
     fi
+fi
 
-    set +x
+exit 0
 
-I set up a cron job to run this script to check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
-
-
-    #!/bin/bash
-
-    cp /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
-
-    postfix reload
-
-    # Ping Microsoft
-    ping -c 1 100.117.138.45 > /dev/null
-    # Check the exit status of the ping command
-    if [ $? -ne 0 ]; then
-        echo "Ping failed, renewing DHCP lease..."
-        # /usr/sbin/dhclient -v -r # Release current DHCP lease # dhclient -v 
-        # Request a new dhcp lease from vmbro, where openwrt is connected.
-        /usr/sbin/dhclient vmbr0
-        # wait 5 seconds for dhcp lease renew
-        sleep 5
-        # delete old gateway
-        ip route del default via 192.168.1.1
-        # add new gateway
-        ip route add default via 10.8.6.1
-    fi
 
 
 # Remove proxmox nag
