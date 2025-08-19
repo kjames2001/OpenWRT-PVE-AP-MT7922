@@ -61,91 +61,91 @@ To check for internet access @reboot, and renew dhcp lease from openwrt vm if no
 
 1. Script → /usr/local/bin/dhcp-renew.sh
 
-#!/bin/bash
-#
-# dhcp-renew.sh – Ensure Proxmox host has valid DHCP/DNS.
-# On boot only: start OpenWRT + AdGuard if no IP is assigned.
-#
+    #!/bin/bash
+    #
+    # dhcp-renew.sh – Ensure Proxmox host has valid DHCP/DNS.
+    # On boot only: start OpenWRT + AdGuard if no IP is assigned.
+    #
+    
+    IFACE="vmbr0"
+    FALLBACK_DNS="100.100.100.100"
+    RETRIES=3
+    DELAY=5
+    PING_TARGETS=("1.1.1.1" "8.8.8.8" "9.9.9.9")   # Cloudflare, Google, Quad9
+    OPENWRT_VM=101
+    ADGUARD_LXC=102
+    BOOT_WINDOW=300   # seconds since boot considered "startup"
+    
+    log() {
+        logger -t dhcp-renew "$1"
+        echo "$1"
+    }
+    
+    check_ip() {
+        ip addr show "$IFACE" | grep -q "inet "
+    }
 
-IFACE="vmbr0"
-FALLBACK_DNS="100.100.100.100"
-RETRIES=3
-DELAY=5
-PING_TARGETS=("1.1.1.1" "8.8.8.8" "9.9.9.9")   # Cloudflare, Google, Quad9
-OPENWRT_VM=101
-ADGUARD_LXC=102
-BOOT_WINDOW=300   # seconds since boot considered "startup"
-
-log() {
-    logger -t dhcp-renew "$1"
-    echo "$1"
-}
-
-check_ip() {
-    ip addr show "$IFACE" | grep -q "inet "
-}
-
-check_connectivity() {
-    for target in "${PING_TARGETS[@]}"; do
-        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
-            log "Connectivity OK via $target"
-            return 0
+    check_connectivity() {
+        for target in "${PING_TARGETS[@]}"; do
+            if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+                log "Connectivity OK via $target"
+                return 0
+            fi
+        done
+        return 1
+    }
+    
+    renew_dhcp() {
+        for attempt in $(seq 1 "$RETRIES"); do
+            log "Attempt $attempt: renewing DHCP lease on $IFACE..."
+            /usr/sbin/dhclient -v -r "$IFACE" >/dev/null 2>&1
+            /usr/sbin/dhclient -v "$IFACE" >/dev/null 2>&1
+    
+            sleep 2
+            if check_ip && check_connectivity; then
+                log "DHCP renew successful on $IFACE"
+                return 0
+            fi
+            log "DHCP renew failed on attempt $attempt, retrying in $DELAY seconds..."
+            sleep "$DELAY"
+        done
+        return 1
+    }
+    
+    start_infra() {
+        log "No IP assigned after retries. Starting OpenWRT VM ($OPENWRT_VM) and AdGuard LXC ($ADGUARD_LXC)..."
+        /usr/sbin/qm start "$OPENWRT_VM"
+        /usr/sbin/pct start "$ADGUARD_LXC"
+    }
+    
+    # --- Main logic ---
+    
+    if check_ip && check_connectivity; then
+        log "IP and connectivity are working on $IFACE, nothing to do."
+        exit 0
+    fi
+    
+    log "No working IP/connectivity, attempting DHCP renewal..."
+    if ! renew_dhcp; then
+        # Only on boot → start infra
+        uptime_seconds=$(awk '{print int($1)}' /proc/uptime)
+        if [ "$uptime_seconds" -lt "$BOOT_WINDOW" ] && ! check_ip; then
+            start_infra
         fi
-    done
-    return 1
-}
-
-renew_dhcp() {
-    for attempt in $(seq 1 "$RETRIES"); do
-        log "Attempt $attempt: renewing DHCP lease on $IFACE..."
-        /usr/sbin/dhclient -v -r "$IFACE" >/dev/null 2>&1
-        /usr/sbin/dhclient -v "$IFACE" >/dev/null 2>&1
-
-        sleep 2
-        if check_ip && check_connectivity; then
-            log "DHCP renew successful on $IFACE"
-            return 0
+    
+        # Add fallback DNS if still no connectivity
+        if ! check_connectivity; then
+            log "Adding fallback DNS $FALLBACK_DNS"
+            if ! grep -qxF "nameserver $FALLBACK_DNS" /etc/resolv.conf; then
+                echo "nameserver $FALLBACK_DNS" >> /etc/resolv.conf
+                log "Added fallback DNS server $FALLBACK_DNS to /etc/resolv.conf"
+            else
+                log "Fallback DNS $FALLBACK_DNS already present."
+            fi
         fi
-        log "DHCP renew failed on attempt $attempt, retrying in $DELAY seconds..."
-        sleep "$DELAY"
-    done
-    return 1
-}
-
-start_infra() {
-    log "No IP assigned after retries. Starting OpenWRT VM ($OPENWRT_VM) and AdGuard LXC ($ADGUARD_LXC)..."
-    /usr/sbin/qm start "$OPENWRT_VM"
-    /usr/sbin/pct start "$ADGUARD_LXC"
-}
-
-# --- Main logic ---
-
-if check_ip && check_connectivity; then
-    log "IP and connectivity are working on $IFACE, nothing to do."
+    fi
+    
     exit 0
-fi
-
-log "No working IP/connectivity, attempting DHCP renewal..."
-if ! renew_dhcp; then
-    # Only on boot → start infra
-    uptime_seconds=$(awk '{print int($1)}' /proc/uptime)
-    if [ "$uptime_seconds" -lt "$BOOT_WINDOW" ] && ! check_ip; then
-        start_infra
-    fi
-
-    # Add fallback DNS if still no connectivity
-    if ! check_connectivity; then
-        log "Adding fallback DNS $FALLBACK_DNS"
-        if ! grep -qxF "nameserver $FALLBACK_DNS" /etc/resolv.conf; then
-            echo "nameserver $FALLBACK_DNS" >> /etc/resolv.conf
-            log "Added fallback DNS server $FALLBACK_DNS to /etc/resolv.conf"
-        else
-            log "Fallback DNS $FALLBACK_DNS already present."
-        fi
-    fi
-fi
-
-exit 0
 
 
 
