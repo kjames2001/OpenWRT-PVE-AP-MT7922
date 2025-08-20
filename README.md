@@ -60,7 +60,9 @@ Modify the HOSTNAME and FQDN values as desired.
 chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 ```
 
-## To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
+## Start openwrt at boot and renew dhcp lease 
+
+To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
 1. Script → /usr/local/bin/dhcp-renew.sh
 ```
