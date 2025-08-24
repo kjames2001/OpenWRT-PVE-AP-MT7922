@@ -166,36 +166,15 @@ TimeoutStartSec=0
 WantedBy=multi-user.target
 ```
 
-3. Systemd Timer → /etc/systemd/system/dhcp-renew.timer
-```
-[Unit]
-Description=Periodic DHCP renew check for Proxmox host (vmbr0)
-
-[Timer]
-# Run 2 minutes after boot
-OnBootSec=2min
-# Then repeat every 5 minutes
-OnUnitActiveSec=5min
-# Add a bit of jitter to avoid collisions if multiple timers
-RandomizedDelaySec=30
-
-[Install]
-WantedBy=timers.target
-```
-adjust OnBootSec to desired value (eg. 30s)
-4. Enable & Start
+3. Enable & Start
 ```
 systemctl daemon-reload
-systemctl enable dhcp-renew.timer
-systemctl start dhcp-renew.timer
-```
-Check timers:
-```
-systemctl list-timers | grep dhcp-renew
+systemctl enable checkip.service
+systemctl start checkip.service
 ```
 Logs:
 ```
-journalctl -t dhcp-renew -f
+journalctl -t checkip -f
 ```
 
 ## Remove proxmox nag
