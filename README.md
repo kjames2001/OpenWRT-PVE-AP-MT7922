@@ -67,7 +67,7 @@ if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ]; then
     # Check if the hostname already exists in /etc/hosts
     if grep -q "$FQDN" /etc/hosts; then
         # Replace the existing line with the new IP
-        sed -i "s/^.*[[:space:]]$FQDN[[:space:]].*$/ $HOST_ENTRY/" /etc/hosts
+        sed -i "s/^.*$FQDN[[:space:]].*$/${HOST_ENTRY}/" /etc/hosts
     else
         # Append the new entry if it doesn't exist
         echo "$HOST_ENTRY" >> /etc/hosts
