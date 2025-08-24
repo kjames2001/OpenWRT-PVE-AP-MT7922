@@ -22,6 +22,29 @@ iface vmbr0 inet dhcp
         bridge-fd 0
 ```
 Modify the bridge-ports accordingly
+
+On Proxmox 8/9, dhclient is not installed by default, because Debian (the base) moved to systemd-networkd/systemd-resolved and recommends isc-dhcp-client only if you explicitly need it.
+
+To fix this, there are two options:
+
+Option 1: Install dhclient (quick fix)
+```
+apt update
+apt install isc-dhcp-client
+```
+This will provide /sbin/dhclient, and ifreload -a will work with DHCP.
+
+ption 2: Use systemd-networkd for DHCP (preferred on modern Proxmox)
+
+Instead of relying on dhclient, you can configure DHCP directly in /etc/network/interfaces like:
+```
+iface vmbr0 inet dhcp
+        use systemd-networkd
+```
+This tells ifupdown2 to let systemd-networkd handle DHCP instead of looking for /sbin/dhclient.
+
+In this portable setup with OpenWRT, Option 1 is the safest — just install isc-dhcp-client.
+
 ### Dynamic Host Configuration
 
 1. Create the hook file
