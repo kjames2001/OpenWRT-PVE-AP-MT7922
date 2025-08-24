@@ -83,115 +83,87 @@ Modify the HOSTNAME and FQDN values as desired.
 chmod +x /etc/dhcp/dhclient-exit-hooks.d/update-etc-hosts
 ```
 
-## Start openwrt at boot and renew dhcp lease 
+## Start openwrt at boot and renew dhcp lease if no IP is obtained
 
 To check for internet access @reboot, and renew dhcp lease from openwrt vm if no ethernet cable is plugged in:
 
-1. Script → /usr/local/bin/dhcp-renew.sh
+1. Script → /root/scripts/checkip.sh
 ```
 #!/bin/bash
-#
-# dhcp-renew.sh – Ensure Proxmox host has valid DHCP/DNS.
-# On boot only: start OpenWRT + AdGuard if no IP is assigned.
-#
 
-IFACE="vmbr0"
-FALLBACK_DNS="100.100.100.100"
-RETRIES=3
-DELAY=5
-PING_TARGETS=("1.1.1.1" "8.8.8.8" "9.9.9.9")   # Cloudflare, Google, Quad9
-OPENWRT_VM=101
-ADGUARD_LXC=102
-BOOT_WINDOW=60   # seconds since boot considered "startup"
+# Log file
+LOGFILE="/var/log/checkip.log"
 
-log() {
-    logger -t dhcp-renew "$1"
-    echo "$1"
-}
+# Redirect all output (stdout & stderr) to log file with timestamps
+exec > >(while read line; do echo "$(date '+%F %T') - $line"; done >> "$LOGFILE") 2>&1
 
+echo "=== Script started ==="
+
+# Function to check if IP is obtained
 check_ip() {
-    ip addr show "$IFACE" | grep -q "inet "
+    ip=$(ip addr show | grep inet | grep -vE "127\.0\.0\.1|fe80::|::1" | awk '{print $2}' | cut -d'/' -f1)
+    [ -n "$ip" ]  # returns 0 if not empty, 1 if empty
 }
 
-check_connectivity() {
-    for target in "${PING_TARGETS[@]}"; do
-        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
-            log "Connectivity OK via $target"
-            return 0
-        fi
-    done
-    return 1
-}
+# Start timer
+start=$(date +%s)
 
-renew_dhcp() {
-    for attempt in $(seq 1 "$RETRIES"); do
-        log "Attempt $attempt: renewing DHCP lease on $IFACE..."
-        /usr/sbin/dhclient -v -r "$IFACE" >/dev/null 2>&1
-        /usr/sbin/dhclient -v "$IFACE" >/dev/null 2>&1
+# Wait loop for 5 seconds to see if host already has IP
+while [ $(($(date +%s) - $start)) -lt 5 ]; do
+    if check_ip; then
+        echo "Host already has IP: $ip"
+        echo "=== Script finished ==="
+        exit 0
+    fi
+    sleep 1
+done
 
-        sleep 2
-        if check_ip && check_connectivity; then
-            log "DHCP renew successful on $IFACE"
-            return 0
-        fi
-        log "DHCP renew failed on attempt $attempt, retrying in $DELAY seconds..."
-        sleep "$DELAY"
-    done
-    return 1
-}
+echo "No IP detected, starting OpenWRT (VM 101) and AdGuard (LXC 102)..."
 
-start_infra() {
-    log "No IP assigned after retries. Starting OpenWRT VM ($OPENWRT_VM) and AdGuard LXC ($ADGUARD_LXC)..."
-    /usr/sbin/qm start "$OPENWRT_VM"
-    /usr/sbin/pct start "$ADGUARD_LXC"
-}
-
-# --- Main logic ---
-
-if check_ip && check_connectivity; then
-    log "IP and connectivity are working on $IFACE, nothing to do."
-    exit 0
+# Start OpenWRT VM if not running
+if ! qm status 101 | grep -q "running"; then
+    echo "Starting OpenWRT VM 101..."
+    /usr/sbin/qm start 101 &
+else
+    echo "OpenWRT VM 101 already running."
 fi
 
-log "No working IP/connectivity, attempting DHCP renewal..."
-if ! renew_dhcp; then
-    # Only on boot → start infra
-    uptime_seconds=$(awk '{print int($1)}' /proc/uptime)
-    if [ "$uptime_seconds" -lt "$BOOT_WINDOW" ] && ! check_ip; then
-        start_infra
-    fi
-
-    # Add fallback DNS if still no connectivity
-    if ! check_connectivity; then
-        log "Adding fallback DNS $FALLBACK_DNS"
-        if ! grep -qxF "nameserver $FALLBACK_DNS" /etc/resolv.conf; then
-            echo "nameserver $FALLBACK_DNS" >> /etc/resolv.conf
-            log "Added fallback DNS server $FALLBACK_DNS to /etc/resolv.conf"
-        else
-            log "Fallback DNS $FALLBACK_DNS already present."
-        fi
-    fi
+# Start AdGuard LXC if not running
+if ! pct status 102 | grep -q "running"; then
+    echo "Starting AdGuard LXC 102..."
+    /usr/sbin/pct start 102 &
+else
+    echo "AdGuard LXC 102 already running."
 fi
 
-exit 0
+sleep 20
 
+# Renew DHCP on Proxmox
+echo "Renewing DHCP lease on vmbr0..."
+/usr/sbin/dhclient -v -r vmbr0 2>/dev/null
+/usr/sbin/dhclient -v vmbr0
+
+echo "=== Script finished ==="
 ```
 
 Make it executable:
 ```
-chmod +x /usr/local/bin/dhcp-renew.sh
+chmod +x /root/script/checkip.sh
 ```
-2. Systemd Service → /etc/systemd/system/dhcp-renew.service
-
+2. Systemd Service → /etc/systemd/system/checkip.service
 ```
 [Unit]
-Description=Renew DHCP lease on Proxmox host (vmbr0)
-After=network-online.target
-Wants=network-online.target
+Description=Check IP and start OpenWRT + AdGuard if needed
+After=pve-cluster.service pvedaemon.service
+Requires=pve-cluster.service pvedaemon.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dhcp-renew.sh
+ExecStart=/root/checkip.sh
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 3. Systemd Timer → /etc/systemd/system/dhcp-renew.timer
